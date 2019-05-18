@@ -24,7 +24,17 @@ import iothub_client
 # pylint: disable=E0611
 from iothub_client import IoTHubClient, IoTHubClientError, IoTHubTransportProvider, IoTHubClientResult
 from iothub_client import IoTHubMessage, IoTHubMessageDispositionResult, IoTHubError, DeviceMethodReturnValue
+import pickle
+# importing libaries ----
+import numpy as np
+import pandas as pd
+from sklearn.ensemble import IsolationForest
+import datetime
 
+pkl_filename = "anom.pkl"  
+# Load from file
+with open(pkl_filename, 'rb') as file:  
+    pickle_model = pickle.load(file)
 # The device connection string to authenticate the device with your IoT hub.
 # Using the Azure CLI:
 # az iot hub device-identity show-connection-string --hub-name {YourIoTHubName} --device-id MyNodeDevice --output table
@@ -81,6 +91,18 @@ def onHttpRequestSave():
     resp = request.get_json()
     resp['EventTime'] = datetime.datetime.now().strftime("%I:%M%p %B %d, %Y")
     payload = json.dumps(resp)
+    
+    X_outliers = pd.DataFrame([{'x1':10,'x2':69.79}])
+    y_pred_outliers = pickle_model.predict(X_outliers)
+    
+    output = 'Normal'
+    if y_pred_outliers[0] == -1:
+        output = "Anom"
+    else:
+        print("Nothing to worry about", file=sys.stderr)
+    
+    resp['notification_alert'] = output
+    print(output ,file=sys.stderr)
     data_t = strftime("%Y-%m-%dT%H:%M:%S+00:00", gmtime())
     #payload = '{ "data": '+payload+', "deviceId": "engine", "time": "'+data_t+'" }'
     #payload = payload
@@ -134,3 +156,4 @@ if __name__ == '__main__':
     registerService()
     #app.run(host= ip)
     app.run(host = ip)
+
